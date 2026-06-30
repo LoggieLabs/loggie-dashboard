@@ -1,0 +1,404 @@
+import type { NodeStatus, IpfsStatus } from '../../../../server/types/index.js';
+
+interface DashboardProps {
+  status: NodeStatus | null;
+}
+
+function Dashboard({ status }: DashboardProps) {
+  if (!status) return null;
+
+  const formatUptime = (seconds: number) => {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${days}d ${hours}h ${minutes}m`;
+  };
+
+  const formatNumber = (num: number) => num.toLocaleString();
+
+  const getTemperatureColor = (s: string) => {
+    switch (s) {
+      case 'normal': return 'text-green-400';
+      case 'warm': return 'text-yellow-400';
+      case 'hot': return 'text-orange-400';
+      case 'critical': return 'text-red-400';
+      default: return 'text-gray-400';
+    }
+  };
+
+  const getUsageColor = (percent: number) => {
+    if (percent < 60) return 'bg-green-500';
+    if (percent < 80) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
+  const formatDataRate = (kbps: number) => {
+    if (kbps < 1024) return `${kbps} KB/s`;
+    return `${(kbps / 1024).toFixed(1)} MB/s`;
+  };
+
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  };
+
+  const truncatePeerId = (id: string) =>
+    id.length > 20 ? `${id.slice(0, 10)}…${id.slice(-8)}` : id;
+
+  return (
+    <div className="space-y-6">
+      {/* System Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard title="CPU Usage">
+          <div className="stat-value">{status.system.cpu.usage}%</div>
+          <div className="stat-label">{status.system.cpu.cores} cores</div>
+          <ProgressBar value={status.system.cpu.usage} color={getUsageColor(status.system.cpu.usage)} />
+          <div className="mt-2 text-xs text-gray-500">
+            Load: {status.system.cpu.loadAverage.map(l => l.toFixed(2)).join(', ')}
+          </div>
+        </MetricCard>
+
+        <MetricCard title="Memory">
+          <div className="stat-value">{status.system.memory.percentUsed}%</div>
+          <div className="stat-label">{status.system.memory.used}G / {status.system.memory.total}G used</div>
+          <ProgressBar value={status.system.memory.percentUsed} color={getUsageColor(status.system.memory.percentUsed)} />
+          <div className="mt-2 text-xs text-gray-500">{status.system.memory.free}G free</div>
+        </MetricCard>
+
+        <MetricCard title="Disk Usage">
+          <div className="stat-value">{status.system.diskUsage.percentUsed}%</div>
+          <div className="stat-label">{status.system.diskUsage.used}G / {status.system.diskUsage.total}G used</div>
+          <ProgressBar value={status.system.diskUsage.percentUsed} color={getUsageColor(status.system.diskUsage.percentUsed)} />
+          <div className="mt-2 text-xs text-gray-500">{status.system.diskUsage.available}G available</div>
+        </MetricCard>
+
+        <MetricCard title="Temperature">
+          {status.system.temperature.cpu !== null ? (
+            <>
+              <div className={`stat-value ${getTemperatureColor(status.system.temperature.status)}`}>
+                {status.system.temperature.cpu}°C
+              </div>
+              <div className="stat-label capitalize">{status.system.temperature.status}</div>
+              <ProgressBar
+                value={Math.min((status.system.temperature.cpu / 100) * 100, 100)}
+                color={getUsageColor(Math.min((status.system.temperature.cpu / 100) * 100, 100))}
+              />
+            </>
+          ) : (
+            <>
+              <div className="stat-value text-gray-500">N/A</div>
+              <div className="stat-label">Unavailable</div>
+            </>
+          )}
+        </MetricCard>
+      </div>
+
+      {/* Disk I/O */}
+      {status.system.diskIO && (
+        <div className="bg-gray-800/50 rounded-lg p-5">
+          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
+            Disk I/O — {status.system.diskIO.device}
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <IOStat label="Read Speed" value={formatDataRate(status.system.diskIO.readKBps)} sub={`${status.system.diskIO.readIOPS} IOPS`} />
+            <IOStat label="Write Speed" value={formatDataRate(status.system.diskIO.writeKBps)} sub={`${status.system.diskIO.writeIOPS} IOPS`} />
+            <IOStat label="Total IOPS" value={(status.system.diskIO.readIOPS + status.system.diskIO.writeIOPS).toString()} sub="ops/sec" />
+            <IOStat
+              label="Utilization"
+              value={`${status.system.diskIO.utilization}%`}
+              sub={<ProgressBar value={status.system.diskIO.utilization} color={getUsageColor(status.system.diskIO.utilization)} />}
+            />
+            <IOStat
+              label="Throughput"
+              value={formatDataRate(status.system.diskIO.readKBps + status.system.diskIO.writeKBps)}
+              sub="combined R/W"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* IPFS */}
+      <IpfsSection ipfs={status.ipfs} formatBytes={formatBytes} truncatePeerId={truncatePeerId} />
+
+      {/* Ethereum Clients (only shown when available) */}
+      {(status.geth || status.lighthouse) && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {status.geth && (
+              <MetricCard title="Geth">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="stat-value text-2xl">{formatNumber(status.geth.currentBlock)}</div>
+                  <StatusBadge syncing={status.geth.syncing} />
+                </div>
+                <div className="stat-label">Current Block</div>
+                <div className="mt-2 text-xs text-gray-500">{status.geth.peers} peers</div>
+              </MetricCard>
+            )}
+            {status.lighthouse && (
+              <MetricCard title="Lighthouse">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="stat-value text-2xl">{formatNumber(status.lighthouse.headSlot)}</div>
+                  <StatusBadge syncing={status.lighthouse.syncing} />
+                </div>
+                <div className="stat-label">Head Slot</div>
+                <div className="mt-2 text-xs text-gray-500">
+                  {status.lighthouse.peers} peers{status.lighthouse.isOptimistic ? ' · Optimistic' : ''}
+                </div>
+              </MetricCard>
+            )}
+            {(status.geth || status.lighthouse) && (
+              <MetricCard title="Network Peers">
+                <div className="stat-value">{(status.geth?.peers ?? 0) + (status.lighthouse?.peers ?? 0)}</div>
+                <div className="stat-label">Total Peers</div>
+                {status.geth && status.lighthouse && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    Geth: {status.geth.peers} · Lighthouse: {status.lighthouse.peers}
+                  </div>
+                )}
+              </MetricCard>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {status.geth && (
+              <div className="bg-gray-800/50 rounded-lg p-5">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Geth Sync</h3>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-400">Progress</span>
+                      <span className="font-semibold text-white">{status.geth.syncProgress.toFixed(2)}%</span>
+                    </div>
+                    <ProgressBar value={Math.min(status.geth.syncProgress, 100)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-gray-500 mb-1">Current Block</div>
+                      <div className="font-semibold text-white">{formatNumber(status.geth.currentBlock)}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">Highest Block</div>
+                      <div className="font-semibold text-white">{formatNumber(status.geth.highestBlock)}</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">{status.geth.version}</div>
+                </div>
+              </div>
+            )}
+            {status.lighthouse && (
+              <div className="bg-gray-800/50 rounded-lg p-5">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Lighthouse Sync</h3>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-gray-500 mb-1">Head Slot</div>
+                      <div className="font-semibold text-white">{formatNumber(status.lighthouse.headSlot)}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500 mb-1">Sync Distance</div>
+                      <div className="font-semibold text-white">{formatNumber(status.lighthouse.syncDistance)}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400">Mode:</span>
+                    {status.lighthouse.isOptimistic
+                      ? <span className="px-2 py-0.5 rounded text-xs bg-yellow-500/20 text-yellow-400">Optimistic</span>
+                      : <span className="px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-400">Verified</span>
+                    }
+                  </div>
+                  <div className="text-xs text-gray-500">{status.lighthouse.version}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* System Info */}
+      <div className="bg-gray-800/50 rounded-lg p-5">
+        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">System Information</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <InfoField label="Hostname" value={status.system.hostname} />
+          <InfoField label="IP Address" value={status.system.network.ipAddress} />
+          <InfoField label="CPU Cores" value={`${status.system.cpu.cores} cores`} />
+          <InfoField label="Total Memory" value={`${status.system.memory.total}G RAM`} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IpfsSection({
+  ipfs,
+  formatBytes,
+  truncatePeerId,
+}: {
+  ipfs: IpfsStatus | undefined;
+  formatBytes: (b: number) => string;
+  truncatePeerId: (id: string) => string;
+}) {
+  if (!ipfs) return null;
+
+  if (!ipfs.available) {
+    return (
+      <div className="bg-gray-800/30 rounded-lg p-5 flex items-center gap-3">
+        <div className="h-2 w-2 rounded-full bg-gray-600" />
+        <span className="text-sm text-gray-500">IPFS not available on this node</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-800/50 rounded-lg p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">IPFS Network</h3>
+        <div className="flex items-center gap-3">
+          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+            ipfs.isPublicGateway
+              ? 'bg-blue-500/20 text-blue-400'
+              : 'bg-gray-600/40 text-gray-400'
+          }`}>
+            {ipfs.isPublicGateway ? 'Public Gateway' : 'Private Node'}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-xs text-gray-400">Online</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Identity */}
+        <div className="space-y-3">
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Peer ID</div>
+            <div className="font-mono text-sm text-white truncate" title={ipfs.peerId}>
+              {truncatePeerId(ipfs.peerId)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Agent</div>
+            <div className="text-sm text-white">{ipfs.agentVersion}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Protocols</div>
+            <div className="text-sm text-white">{ipfs.protocolCount} supported</div>
+          </div>
+        </div>
+
+        {/* Swarm */}
+        <div className="space-y-3">
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Swarm Peers</div>
+            <div className="text-2xl font-bold text-white">{ipfs.swarmPeers}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Listen Addresses</div>
+            <div className="space-y-1">
+              {ipfs.addresses.slice(0, 3).map((addr, i) => (
+                <div key={i} className="font-mono text-xs text-gray-300 truncate" title={addr}>
+                  {addr}
+                </div>
+              ))}
+              {ipfs.addresses.length > 3 && (
+                <div className="text-xs text-gray-500">+{ipfs.addresses.length - 3} more</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Bandwidth */}
+        <div className="space-y-3">
+          <div className="text-xs text-gray-500 mb-1">Bandwidth</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gray-900/40 rounded p-2">
+              <div className="text-xs text-gray-500">Rate In</div>
+              <div className="text-sm font-semibold text-green-400">
+                {formatBytes(Math.round(ipfs.bandwidth.RateIn))}/s
+              </div>
+            </div>
+            <div className="bg-gray-900/40 rounded p-2">
+              <div className="text-xs text-gray-500">Rate Out</div>
+              <div className="text-sm font-semibold text-blue-400">
+                {formatBytes(Math.round(ipfs.bandwidth.RateOut))}/s
+              </div>
+            </div>
+            <div className="bg-gray-900/40 rounded p-2">
+              <div className="text-xs text-gray-500">Total In</div>
+              <div className="text-sm font-semibold text-white">{formatBytes(ipfs.bandwidth.TotalIn)}</div>
+            </div>
+            <div className="bg-gray-900/40 rounded p-2">
+              <div className="text-xs text-gray-500">Total Out</div>
+              <div className="text-sm font-semibold text-white">{formatBytes(ipfs.bandwidth.TotalOut)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Swarm sample peers */}
+      {ipfs.swarmSample.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-gray-700/50">
+          <div className="text-xs text-gray-500 mb-2">Connected Peers (sample)</div>
+          <div className="space-y-1">
+            {ipfs.swarmSample.map((p, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs text-gray-400 font-mono">
+                <div className="h-1.5 w-1.5 rounded-full bg-green-500/60 flex-shrink-0" />
+                <span className="truncate">{p.addr}/p2p/{p.peer.slice(0, 16)}…</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MetricCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-gray-800/50 rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-gray-400 mb-3">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function ProgressBar({ value, color = 'bg-blue-500' }: { value: number; color?: string }) {
+  return (
+    <div className="mt-2 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+      <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(value, 100)}%` }} />
+    </div>
+  );
+}
+
+function StatusBadge({ syncing }: { syncing: boolean }) {
+  return (
+    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+      syncing ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
+    }`}>
+      {syncing ? 'Syncing' : 'Synced'}
+    </span>
+  );
+}
+
+function IOStat({ label, value, sub }: { label: string; value: string; sub: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-xs text-gray-500 mb-1">{label}</div>
+      <div className="text-lg font-semibold text-white">{value}</div>
+      <div className="text-xs text-gray-500 mt-1">{sub}</div>
+    </div>
+  );
+}
+
+function InfoField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-gray-500 mb-1">{label}</div>
+      <div className="font-semibold text-white">{value}</div>
+    </div>
+  );
+}
+
+export default Dashboard;

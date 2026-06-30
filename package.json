@@ -1,0 +1,56 @@
+{
+  "name": "@loggiecid/node-dashboard",
+  "version": "0.1.0",
+  "description": "Loggie OS Node Dashboard — system, IPFS, Redis, Geth, and Lighthouse monitoring for any Loggie node",
+  "main": "dist/server/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"pnpm:dev:server\" \"pnpm:dev:client\"",
+    "dev:server": "tsx watch server/index.ts",
+    "dev:client": "vite",
+    "build": "pnpm build:client && pnpm build:server",
+    "build:client": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "preview": "vite preview",
+    "start": "node dist/server/index.js",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit"
+  },
+  "keywords": [
+    "loggie",
+    "node",
+    "dashboard",
+    "monitoring",
+    "ipfs",
+    "ethereum",
+    "geth",
+    "lighthouse",
+    "redis"
+  ],
+  "author": "Loggie",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "ioredis": "^5.3.2",
+    "node-fetch": "^3.3.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.9.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.0.0",
+    "@types/ws": "^8.5.13",
+    "@vitejs/plugin-react": "^4.3.3",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "postcss": "^8.4.49",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.15",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

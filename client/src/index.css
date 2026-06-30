@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-6;
+  }
+
+  .card-header {
+    @apply text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100;
+  }
+
+  .stat-label {
+    @apply text-sm text-gray-600 dark:text-gray-400;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold text-gray-900 dark:text-gray-100;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-badge.syncing {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+  }
+
+  .status-badge.synced {
+    @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+  }
+
+  .status-badge.error {
+    @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+  }
+
+  .progress-bar {
+    @apply w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700;
+  }
+
+  .progress-fill {
+    @apply bg-loggie-600 h-2.5 rounded-full transition-all duration-300;
+  }
+}
