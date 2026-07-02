@@ -1,4 +1,4 @@
-import type { NodeStatus, IpfsStatus, ProcessInfo } from '../../../../server/types/index.js';
+import type { NodeStatus, IpfsStatus, ProcessInfo, DriveInfo, NetworkInterface, ServiceHealth } from '../../../../server/types/index.js';
 
 interface DashboardProps {
   status: NodeStatus | null;
@@ -119,6 +119,15 @@ function Dashboard({ status }: DashboardProps) {
         </div>
       )}
 
+      {/* Services Health */}
+      <ServicesStrip services={status.system.services} />
+
+      {/* Mounted Drives */}
+      <DrivesTable drives={status.system.drives} getUsageColor={getUsageColor} />
+
+      {/* Network I/O */}
+      <NetworkIO interfaces={status.system.network.interfaces} formatDataRate={formatDataRate} formatBytes={formatBytes} />
+
       {/* Top Processes */}
       <ProcessTable processes={status.system.processes} />
 
@@ -228,6 +237,98 @@ function Dashboard({ status }: DashboardProps) {
           <InfoField label="CPU Cores" value={`${status.system.cpu.cores} cores`} />
           <InfoField label="Total Memory" value={`${status.system.memory.total}G RAM`} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ServicesStrip({ services }: { services: ServiceHealth[] }) {
+  if (!services || services.length === 0) return null;
+  return (
+    <div className="bg-gray-800/50 rounded-lg px-5 py-4">
+      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Services</h3>
+      <div className="flex flex-wrap gap-2">
+        {services.map(s => (
+          <div key={s.name} className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
+            s.active
+              ? 'bg-green-500/10 border-green-500/30 text-green-400'
+              : s.status === 'failed'
+              ? 'bg-red-500/10 border-red-500/30 text-red-400'
+              : 'bg-gray-700/40 border-gray-600/40 text-gray-500'
+          }`}>
+            <div className={`h-1.5 w-1.5 rounded-full ${
+              s.active ? 'bg-green-500 animate-pulse' : s.status === 'failed' ? 'bg-red-500' : 'bg-gray-600'
+            }`} />
+            {s.name}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DrivesTable({ drives, getUsageColor }: { drives: DriveInfo[]; getUsageColor: (n: number) => string }) {
+  if (!drives || drives.length === 0) return null;
+  return (
+    <div className="bg-gray-800/50 rounded-lg p-5">
+      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Storage</h3>
+      <div className="space-y-3">
+        {drives.map((d, i) => (
+          <div key={i}>
+            <div className="flex items-center justify-between text-sm mb-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-white font-medium truncate">{d.mountpoint}</span>
+                <span className="text-gray-600 text-xs flex-shrink-0">{d.fstype}</span>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0 ml-4 text-xs text-gray-400">
+                <span>{d.used}G / {d.total}G</span>
+                <span className={`font-semibold ${d.percentUsed > 80 ? 'text-red-400' : d.percentUsed > 60 ? 'text-yellow-400' : 'text-gray-300'}`}>
+                  {d.percentUsed}%
+                </span>
+              </div>
+            </div>
+            <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${getUsageColor(d.percentUsed)}`}
+                style={{ width: `${Math.min(d.percentUsed, 100)}%` }}
+              />
+            </div>
+            <div className="text-xs text-gray-600 mt-0.5">{d.device} · {d.available}G free</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NetworkIO({ interfaces, formatDataRate, formatBytes }: {
+  interfaces: NetworkInterface[];
+  formatDataRate: (kbps: number) => string;
+  formatBytes: (bytes: number) => string;
+}) {
+  const active = interfaces.filter(i => i.rxBytes > 0 || i.txBytes > 0);
+  if (active.length === 0) return null;
+  return (
+    <div className="bg-gray-800/50 rounded-lg p-5">
+      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Network I/O</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {active.map(iface => (
+          <div key={iface.name} className="bg-gray-900/40 rounded-lg p-3">
+            <div className="text-sm font-semibold text-white mb-2">{iface.name}</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className="text-xs text-gray-500 mb-0.5">↓ In</div>
+                <div className="text-sm font-mono text-green-400">{formatDataRate(iface.rxKBps)}</div>
+                <div className="text-xs text-gray-600">{formatBytes(iface.rxBytes)} total</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-0.5">↑ Out</div>
+                <div className="text-sm font-mono text-blue-400">{formatDataRate(iface.txKBps)}</div>
+                <div className="text-xs text-gray-600">{formatBytes(iface.txBytes)} total</div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

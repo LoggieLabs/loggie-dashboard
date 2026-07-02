@@ -52,6 +52,30 @@ export interface ProcessInfo {
   command: string;
 }
 
+export interface DriveInfo {
+  device: string;
+  mountpoint: string;
+  fstype: string;
+  total: number;
+  used: number;
+  available: number;
+  percentUsed: number;
+}
+
+export interface NetworkInterface {
+  name: string;
+  rxKBps: number;
+  txKBps: number;
+  rxBytes: number;
+  txBytes: number;
+}
+
+export interface ServiceHealth {
+  name: string;
+  active: boolean;
+  status: string;
+}
+
 export interface SystemInfo {
   hostname: string;
   uptime: number;
@@ -69,6 +93,7 @@ export interface SystemInfo {
     utilization: number;
     device: string;
   } | null;
+  drives: DriveInfo[];
   memory: {
     total: number;
     used: number;
@@ -86,7 +111,9 @@ export interface SystemInfo {
   };
   network: {
     ipAddress: string;
+    interfaces: NetworkInterface[];
   };
+  services: ServiceHealth[];
   processes: ProcessInfo[];
 }
 
