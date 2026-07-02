@@ -169,14 +169,71 @@ async function getNetworkIO() {
 
 // ── Services health ───────────────────────────────────────────────────────────
 
-const DEFAULT_SERVICES = ['ipfs', 'redis', 'loggie-dashboard', 'geo-intel'];
+// System plumbing that's always running and not useful to display
+const SERVICE_NOISE = new Set([
+  'accounts-daemon', 'alsa-restore', 'alsa-state', 'anacron', 'apparmor',
+  'apport', 'apt-daily', 'apt-daily-upgrade', 'avahi-daemon', 'bluetooth',
+  'colord', 'console-setup', 'cron', 'cups', 'cups-browsed', 'dbus',
+  'dmesg', 'dpkg-db-backup', 'e2scrub-all', 'e2scrub-reap', 'emergency',
+  'fstrim', 'fwupd', 'fwupd-refresh', 'gdm', 'kerneloops', 'ModemManager',
+  'networkd-dispatcher', 'NetworkManager', 'packagekit', 'polkit', 'rsyslog',
+  'rtkit-daemon', 'snapd', 'speech-dispatcher', 'switcheroo-control',
+  'thermald', 'udisks2', 'upower', 'whoopsie', 'wpa_supplicant',
+  'ssh', 'sshd', 'containerd', 'plymouth', 'plymouth-quit', 'plymouth-quit-wait',
+  'power-profiles-daemon', 'unattended-upgrades', 'irqbalance', 'multipathd',
+]);
+const NOISE_PREFIXES = [
+  'systemd-', 'getty@', 'user@', 'session-', 'gnome-', 'at-spi-',
+  'dconf', 'evolution-', 'gcr-', 'pipewire', 'pulseaudio', 'wireplumber',
+  'gvfs-', 'xdg-', 'cloud-', 'filter-chain', 'snap.canonical-',
+];
+
+function isNoise(name: string) {
+  return SERVICE_NOISE.has(name) || NOISE_PREFIXES.some(p => name.startsWith(p));
+}
+
+async function parseUnits(cmd: string) {
+  try {
+    const { stdout } = await execAsync(cmd);
+    const services: Array<{ name: string; active: boolean; status: string }> = [];
+    for (const line of stdout.trim().split('\n')) {
+      if (!line.trim()) continue;
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 4) continue;
+      const unit = parts[0];
+      if (!unit.endsWith('.service')) continue;
+      const name = unit.replace('.service', '');
+      const sub = parts[3]; // running | dead | exited | failed | ...
+      if (sub !== 'running' && sub !== 'failed') continue;
+      if (isNoise(name)) continue;
+      services.push({ name, active: sub === 'running', status: sub });
+    }
+    return services;
+  } catch {
+    return [];
+  }
+}
 
 async function getServicesHealth() {
-  const extra = (process.env.MONITOR_SERVICES ?? '').split(',').filter(Boolean);
-  const names = [...new Set([...DEFAULT_SERVICES, ...extra])];
+  const [systemSvcs, userSvcs] = await Promise.all([
+    parseUnits('systemctl list-units --type=service --state=active,failed --no-legend --no-pager --plain 2>/dev/null'),
+    parseUnits('systemctl --user list-units --type=service --state=active,failed --no-legend --no-pager --plain 2>/dev/null'),
+  ]);
 
-  return Promise.all(names.map(async name => {
-    // Try system service first, then user service
+  // Merge; system entries take precedence over user entries with same name
+  const seen = new Set<string>();
+  const result: Array<{ name: string; active: boolean; status: string }> = [];
+  for (const s of [...systemSvcs, ...userSvcs]) {
+    if (!seen.has(s.name)) {
+      seen.add(s.name);
+      result.push(s);
+    }
+  }
+
+  // Force-include any MONITOR_SERVICES extras not already discovered
+  const extra = (process.env.MONITOR_SERVICES ?? '').split(',').filter(Boolean);
+  for (const name of extra) {
+    if (seen.has(name)) continue;
     for (const cmd of [
       `systemctl is-active ${name} 2>/dev/null`,
       `systemctl --user is-active ${name} 2>/dev/null`,
@@ -184,13 +241,13 @@ async function getServicesHealth() {
       try {
         const { stdout } = await execAsync(cmd);
         const status = stdout.trim();
-        if (status !== '') return { name, active: status === 'active', status };
-      } catch {
-        // try next
-      }
+        if (status) { result.push({ name, active: status === 'active', status }); seen.add(name); break; }
+      } catch { /* try next */ }
     }
-    return { name, active: false, status: 'inactive' };
-  }));
+    if (!seen.has(name)) result.push({ name, active: false, status: 'inactive' });
+  }
+
+  return result.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // ── Top processes ─────────────────────────────────────────────────────────────
