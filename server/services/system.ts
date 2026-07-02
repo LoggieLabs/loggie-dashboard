@@ -169,7 +169,7 @@ async function getNetworkIO() {
 
 // ── Services health ───────────────────────────────────────────────────────────
 
-const DEFAULT_SERVICES = ['ipfs', 'redis', 'loggie-dashboard'];
+const DEFAULT_SERVICES = ['ipfs', 'redis', 'loggie-dashboard', 'geo-intel'];
 
 async function getServicesHealth() {
   const extra = (process.env.MONITOR_SERVICES ?? '').split(',').filter(Boolean);
