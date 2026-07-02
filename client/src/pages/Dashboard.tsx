@@ -1,4 +1,4 @@
-import type { NodeStatus, IpfsStatus } from '../../../../server/types/index.js';
+import type { NodeStatus, IpfsStatus, ProcessInfo } from '../../../../server/types/index.js';
 
 interface DashboardProps {
   status: NodeStatus | null;
@@ -119,6 +119,9 @@ function Dashboard({ status }: DashboardProps) {
         </div>
       )}
 
+      {/* Top Processes */}
+      <ProcessTable processes={status.system.processes} />
+
       {/* IPFS */}
       <IpfsSection ipfs={status.ipfs} formatBytes={formatBytes} truncatePeerId={truncatePeerId} />
 
@@ -225,6 +228,66 @@ function Dashboard({ status }: DashboardProps) {
           <InfoField label="CPU Cores" value={`${status.system.cpu.cores} cores`} />
           <InfoField label="Total Memory" value={`${status.system.memory.total}G RAM`} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ProcessTable({ processes }: { processes: ProcessInfo[] }) {
+  if (!processes || processes.length === 0) return null;
+
+  const getCpuColor = (cpu: number) => {
+    if (cpu > 50) return 'text-red-400';
+    if (cpu > 20) return 'text-yellow-400';
+    return 'text-gray-300';
+  };
+
+  const getMemColor = (mem: number) => {
+    if (mem > 20) return 'text-red-400';
+    if (mem > 10) return 'text-yellow-400';
+    return 'text-gray-300';
+  };
+
+  return (
+    <div className="bg-gray-800/50 rounded-lg p-5">
+      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
+        Active Processes
+      </h3>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-gray-500 border-b border-gray-700">
+              <th className="text-left pb-2 font-medium">Process</th>
+              <th className="text-left pb-2 font-medium">User</th>
+              <th className="text-right pb-2 font-medium w-16">PID</th>
+              <th className="text-right pb-2 font-medium w-16">CPU%</th>
+              <th className="text-right pb-2 font-medium w-16">MEM%</th>
+              <th className="text-right pb-2 font-medium w-20">RSS</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-700/50">
+            {processes.map((p, i) => (
+              <tr key={i} className="hover:bg-gray-700/20 transition-colors">
+                <td className="py-1.5 pr-4">
+                  <span className="text-white font-medium truncate block max-w-xs" title={p.command}>
+                    {p.name}
+                  </span>
+                </td>
+                <td className="py-1.5 pr-4 text-gray-400">{p.user}</td>
+                <td className="py-1.5 text-right text-gray-500 font-mono">{p.pid}</td>
+                <td className={`py-1.5 text-right font-mono font-medium ${getCpuColor(p.cpu)}`}>
+                  {p.cpu.toFixed(1)}
+                </td>
+                <td className={`py-1.5 text-right font-mono font-medium ${getMemColor(p.memPercent)}`}>
+                  {p.memPercent.toFixed(1)}
+                </td>
+                <td className="py-1.5 text-right text-gray-400 font-mono">
+                  {p.memMB > 1024 ? `${(p.memMB / 1024).toFixed(1)}G` : `${p.memMB}M`}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

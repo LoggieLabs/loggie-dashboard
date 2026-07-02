@@ -42,6 +42,16 @@ export interface LighthouseVersion {
   version: string;
 }
 
+export interface ProcessInfo {
+  pid: number;
+  user: string;
+  cpu: number;
+  memPercent: number;
+  memMB: number;
+  name: string;
+  command: string;
+}
+
 export interface SystemInfo {
   hostname: string;
   uptime: number;
@@ -77,6 +87,7 @@ export interface SystemInfo {
   network: {
     ipAddress: string;
   };
+  processes: ProcessInfo[];
 }
 
 export interface IpfsBandwidth {

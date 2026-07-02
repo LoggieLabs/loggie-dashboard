@@ -218,6 +218,9 @@ export async function getSystemInfo(): Promise<SystemInfo> {
     console.error('Failed to get IP address:', error);
   }
 
+  // Get top processes
+  const processes = await getTopProcesses();
+
   return {
     hostname,
     uptime,
@@ -226,10 +229,43 @@ export async function getSystemInfo(): Promise<SystemInfo> {
     memory,
     cpu,
     temperature,
-    network: {
-      ipAddress,
-    },
+    network: { ipAddress },
+    processes,
   };
+}
+
+async function getTopProcesses() {
+  try {
+    // ps output: USER PID %CPU %MEM RSS COMMAND
+    const { stdout } = await execAsync(
+      "ps aux --sort=-%cpu | awk 'NR>1 {print $1,$2,$3,$4,$6,$11}' | head -12"
+    );
+    return stdout
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map(line => {
+        const parts = line.trim().split(/\s+/);
+        const user = parts[0] ?? '';
+        const pid = parseInt(parts[1] ?? '0');
+        const cpu = parseFloat(parts[2] ?? '0');
+        const memPercent = parseFloat(parts[3] ?? '0');
+        const rssKB = parseInt(parts[4] ?? '0');
+        const command = parts.slice(5).join(' ');
+        const name = command.split('/').pop()?.split(' ')[0] ?? command;
+        return {
+          pid,
+          user,
+          cpu,
+          memPercent,
+          memMB: Math.round(rssKB / 1024),
+          name,
+          command,
+        };
+      });
+  } catch {
+    return [];
+  }
 }
 
 export async function restartService(service: 'geth' | 'lighthouse'): Promise<void> {
