@@ -1,4 +1,5 @@
-import type { NodeStatus, IpfsStatus, ProcessInfo, DriveInfo, NetworkInterface, ServiceHealth } from '../../../../server/types/index.js';
+import { useState, useEffect } from 'react';
+import type { NodeStatus, IpfsStatus, ProcessInfo, DriveInfo, NetworkInterface, ServiceHealth, SpeedTestResult } from '../../../../server/types/index.js';
 
 interface DashboardProps {
   status: NodeStatus | null;
@@ -127,6 +128,9 @@ function Dashboard({ status }: DashboardProps) {
 
       {/* Network I/O */}
       <NetworkIO interfaces={status.system.network.interfaces} formatDataRate={formatDataRate} formatBytes={formatBytes} />
+
+      {/* Internet Speed */}
+      <SpeedTestSection initial={status.speedtest ?? null} />
 
       {/* Top Processes */}
       <ProcessTable processes={status.system.processes} />
@@ -515,6 +519,103 @@ function IpfsSection({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function SpeedTestSection({ initial }: { initial: SpeedTestResult | null }) {
+  const [result, setResult] = useState<SpeedTestResult | null>(initial);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Adopt newer results from the polled status, unless a manual run is in flight.
+  useEffect(() => {
+    if (running) return;
+    if (initial && (!result || initial.testedAt > result.testedAt)) {
+      setResult(initial);
+    }
+  }, [initial, running, result]);
+
+  const run = async () => {
+    setRunning(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/speedtest/run', { method: 'POST' });
+      const data = await res.json();
+      if (data.lastResult) setResult(data.lastResult);
+      if (!res.ok) setError(data.lastError || `Speed test failed (HTTP ${res.status})`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Speed test failed');
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const testedAgo = (ts: number) => {
+    const s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    return `${Math.floor(s / 3600)}h ago`;
+  };
+
+  return (
+    <div className="bg-gray-800/50 rounded-lg p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Internet Speed</h3>
+        <div className="flex items-center gap-3">
+          {result && !running && (
+            <span className="text-xs text-gray-500">tested {testedAgo(result.testedAt)}</span>
+          )}
+          <button
+            onClick={run}
+            disabled={running}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+              running
+                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-500 text-white'
+            }`}
+          >
+            {running && <span className="inline-block h-3 w-3 rounded-full border-2 border-gray-400 border-t-transparent animate-spin" />}
+            {running ? 'Testing…' : 'Run test'}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mb-4 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded px-3 py-2">
+          {error}
+        </div>
+      )}
+
+      {result ? (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <SpeedStat label="Download" value={result.downloadMbps} unit="Mbps" color="text-green-400" />
+            <SpeedStat label="Upload" value={result.uploadMbps} unit="Mbps" color="text-blue-400" />
+            <SpeedStat label="Ping" value={result.pingMs} unit="ms" color="text-white" />
+            <SpeedStat label="Jitter" value={result.jitterMs} unit="ms" color="text-gray-300" />
+          </div>
+          <div className="mt-3 text-xs text-gray-600">
+            via {result.server} · {(result.durationMs / 1000).toFixed(1)}s
+          </div>
+        </>
+      ) : (
+        <div className="text-sm text-gray-500">
+          {running ? 'Measuring download, upload, and latency…' : 'No reading yet — run a test.'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SpeedStat({ label, value, unit, color }: { label: string; value: number; unit: string; color: string }) {
+  return (
+    <div className="bg-gray-900/40 rounded-lg p-3">
+      <div className="text-xs text-gray-500 mb-1">{label}</div>
+      <div className={`text-2xl font-bold ${color}`}>
+        {value}
+        <span className="text-sm font-normal text-gray-500 ml-1">{unit}</span>
+      </div>
     </div>
   );
 }

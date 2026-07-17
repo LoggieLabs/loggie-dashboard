@@ -6,7 +6,9 @@ import { createServer } from 'http';
 import statusRouter from './routes/status.js';
 import redisRouter from './routes/redis.js';
 import ipfsRouter from './routes/ipfs.js';
+import speedtestRouter from './routes/speedtest.js';
 import { setupWebSocket } from './websocket.js';
+import * as speedtest from './services/speedtest.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +25,7 @@ app.use(express.json());
 app.use('/api', statusRouter);
 app.use('/api/redis', redisRouter);
 app.use('/api/ipfs', ipfsRouter);
+app.use('/api/speedtest', speedtestRouter);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
@@ -55,6 +58,16 @@ server.listen(PORT, '0.0.0.0', () => {
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
   `);
+
+  // Run one speed test at startup so the panel has an initial reading.
+  speedtest.runSpeedTestQuietly();
+
+  // Optional periodic re-test. Set SPEEDTEST_INTERVAL_MIN=0 (default) to disable.
+  const intervalMin = parseInt(process.env.SPEEDTEST_INTERVAL_MIN || '0');
+  if (intervalMin > 0) {
+    setInterval(() => speedtest.runSpeedTestQuietly(), intervalMin * 60_000);
+    console.log(`[speedtest] periodic test every ${intervalMin} min`);
+  }
 });
 
 export default app;

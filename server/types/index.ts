@@ -143,6 +143,22 @@ export type IpfsStatus =
     }
   | { available: false };
 
+export interface SpeedTestResult {
+  downloadMbps: number;
+  uploadMbps: number;
+  pingMs: number;
+  jitterMs: number;
+  server: string;
+  testedAt: number; // epoch ms
+  durationMs: number;
+}
+
+export interface SpeedTestState {
+  running: boolean;
+  lastResult: SpeedTestResult | null;
+  lastError: string | null;
+}
+
 export interface NodeStatus {
   timestamp: number;
   geth?: {
@@ -162,6 +178,7 @@ export interface NodeStatus {
     isOptimistic: boolean;
   };
   ipfs?: IpfsStatus;
+  speedtest?: SpeedTestResult | null;
   system: SystemInfo;
 }
 

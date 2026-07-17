@@ -3,6 +3,7 @@ import * as geth from '../services/geth.js';
 import * as lighthouse from '../services/lighthouse.js';
 import * as system from '../services/system.js';
 import * as ipfs from '../services/ipfs.js';
+import * as speedtest from '../services/speedtest.js';
 import type { NodeStatus } from '../types/index.js';
 
 const router = Router();
@@ -33,6 +34,7 @@ router.get('/status', async (_req, res) => {
       timestamp: Date.now(),
       system: systemInfo,
       ipfs: ipfsStatus,
+      speedtest: speedtest.getState().lastResult,
     };
 
     if (gethSync !== null && gethPeers !== null && gethVersion !== null) {

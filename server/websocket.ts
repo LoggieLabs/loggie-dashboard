@@ -5,6 +5,7 @@ import * as lighthouse from './services/lighthouse.js';
 import * as system from './services/system.js';
 import * as redis from './services/redis.js';
 import * as ipfs from './services/ipfs.js';
+import * as speedtest from './services/speedtest.js';
 import type { NodeStatus } from './types/index.js';
 
 const BROADCAST_INTERVAL = 5000;
@@ -79,6 +80,7 @@ async function getNodeStatus(): Promise<NodeStatus> {
     timestamp: Date.now(),
     system: systemInfo,
     ipfs: ipfsStatus,
+    speedtest: speedtest.getState().lastResult,
   };
 
   if (gethSync !== null && gethPeers !== null && gethVersion !== null) {
