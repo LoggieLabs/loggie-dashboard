@@ -7,6 +7,10 @@ type TabType = 'node' | 'redis';
 
 const REFRESH_INTERVAL = 5000;
 
+// Where the Loggie Node Hub lives (single instance, on WayneManor). Every
+// node's dashboard links back here. Update if the hub host/IP changes.
+const HUB_URL = 'http://192.168.1.174:8090';
+
 function App() {
   const [status, setStatus] = useState<NodeStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -92,13 +96,23 @@ function App() {
               <LastUpdateIndicator lastUpdate={lastUpdate} />
             </div>
           </div>
-          <div className="flex gap-1">
-            <TabButton active={activeTab === 'node'} onClick={() => setActiveTab('node')}>
-              Node Status
-            </TabButton>
-            <TabButton active={activeTab === 'redis'} onClick={() => setActiveTab('redis')}>
-              Redis
-            </TabButton>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex gap-1">
+              <TabButton active={activeTab === 'node'} onClick={() => setActiveTab('node')}>
+                Node Status
+              </TabButton>
+              <TabButton active={activeTab === 'redis'} onClick={() => setActiveTab('redis')}>
+                Redis
+              </TabButton>
+            </div>
+            <a
+              href={HUB_URL}
+              title="Back to the Node Hub — all nodes on the network"
+              className="mb-1 flex flex-shrink-0 items-center gap-2 self-center rounded-lg border border-transparent px-3 py-1.5 text-xs font-medium text-gray-400 transition-colors hover:border-[#212c38] hover:text-loggie-400"
+            >
+              <HubGlyph />
+              <span className="hidden sm:inline">Node Hub</span>
+            </a>
           </div>
         </div>
       </header>
@@ -122,6 +136,27 @@ function NodeGlyph() {
         <line x1="16" y1="26" x2="16" y2="29" />
         <line x1="3" y1="16" x2="6" y2="16" />
         <line x1="26" y1="16" x2="29" y2="16" />
+      </g>
+    </svg>
+  );
+}
+
+// Hub = a cluster of nodes. Uses currentColor so it tints with the link.
+function HubGlyph() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 32 32" className="flex-shrink-0" aria-hidden="true">
+      <g stroke="currentColor" strokeWidth="1.8" strokeOpacity="0.7" strokeLinecap="round">
+        <line x1="16" y1="16" x2="16" y2="6" />
+        <line x1="16" y1="16" x2="26" y2="16" />
+        <line x1="16" y1="16" x2="16" y2="26" />
+        <line x1="16" y1="16" x2="6" y2="16" />
+      </g>
+      <g fill="currentColor">
+        <circle cx="16" cy="6" r="2.6" />
+        <circle cx="26" cy="16" r="2.6" />
+        <circle cx="16" cy="26" r="2.6" />
+        <circle cx="6" cy="16" r="2.6" />
+        <circle cx="16" cy="16" r="4.4" />
       </g>
     </svg>
   );
