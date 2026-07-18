@@ -71,9 +71,29 @@ async function getInfo(): Promise<Record<string, Record<string, string>>> {
   return parsed;
 }
 
+// A "queue" is any Redis LIST — Trapnet's pipeline is list/BRPOP based
+// (trapnet:q:feed:*, trapnet:*_alerts, …). Discover by TYPE, not by name
+// glob: the old keys('*queue*') matched nothing because no queue key
+// contains the substring "queue". SCAN keeps this non-blocking; healthy
+// queues that are momentarily empty simply have no key and won't appear.
 export async function getAllQueues(): Promise<string[]> {
   try {
-    return await getClient().keys('*queue*');
+    const c = getClient();
+    const queues: string[] = [];
+    let cursor = '0';
+    do {
+      const [next, keys] = await c.scan(cursor, 'COUNT', 500);
+      cursor = next;
+      if (keys.length > 0) {
+        const pipe = c.pipeline();
+        for (const k of keys) pipe.type(k);
+        const types = await pipe.exec();
+        keys.forEach((k, i) => {
+          if (types?.[i]?.[1] === 'list') queues.push(k);
+        });
+      }
+    } while (cursor !== '0');
+    return queues.sort();
   } catch {
     return [];
   }
@@ -99,7 +119,11 @@ export async function getAllQueueStats(): Promise<QueueStats[]> {
 
 export async function peekQueue(queueName: string, count = 10): Promise<string[]> {
   try {
-    return await getClient().lrange(queueName, 0, count - 1);
+    // Newest first. Trapnet queues RPUSH (producers append to the tail),
+    // so the most recent items are at the END of the list — take the tail
+    // and reverse it rather than reading the head (which is the oldest).
+    const tail = await getClient().lrange(queueName, -count, -1);
+    return tail.reverse();
   } catch {
     return [];
   }
