@@ -2,50 +2,131 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────
+   Loggie Node Dashboard — instrument-panel design system
+   Cohesive with the Loggie Node Hub: near-black slate, hairline
+   panels, Loggie cyan accent, monospace telemetry.
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --bg:        #0a0e13;
+  --surface:   #131a23;
+  --surface-2: #0e141c;
+  --inset:     #0c1119;
+  --line:      #212c38;
+  --line-soft: #1a2430;
+  --txt:       #e6edf3;
+  --dim:       #8b98a8;
+  --faint:     #5b6672;
+  --cyan:      #38bdf8;
+  --cyan-dim:  #7dd3fc;
+  --ok:        #3fb950;
+  --warn:      #d29922;
+  --bad:       #f85149;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Roboto Mono", Menlo, Consolas, monospace;
+}
+
 @layer base {
+  html { -webkit-text-size-adjust: 100%; }
   body {
-    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+    background: var(--bg);
+    color: var(--txt);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
   }
+  /* Ambient signal glow behind the header — a node broadcasting. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 320px;
+    background:
+      radial-gradient(60% 100% at 50% -10%, rgba(56,189,248,.16), transparent 70%),
+      radial-gradient(40% 80% at 85% -20%, rgba(56,189,248,.07), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  ::selection { background: rgba(56,189,248,.28); }
+  /* Dark, quiet scrollbars */
+  * { scrollbar-color: #2a3746 transparent; scrollbar-width: thin; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #2a3746; border-radius: 8px; border: 2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background: #354758; }
+  :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; border-radius: 4px; }
 }
 
 @layer components {
-  .card {
-    @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-6;
+  /* Section container — replaces the old flat gray panels. */
+  .panel {
+    position: relative;
+    background: linear-gradient(180deg, var(--surface), var(--surface-2));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1.15rem 1.25rem;
   }
 
-  .card-header {
-    @apply text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100;
+  /* Metric "instrument" card — the hero row. */
+  .metric {
+    position: relative;
+    background: linear-gradient(180deg, var(--surface), var(--surface-2));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1rem 1.1rem 1.15rem;
+    transition: border-color .18s ease, transform .18s ease;
+  }
+  .metric:hover { border-color: #31465b; transform: translateY(-2px); }
+
+  /* Section eyebrow — small tracked label with a cyan tick. */
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .eyebrow::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 2px;
+    background: var(--cyan);
+    box-shadow: 0 0 8px rgba(56,189,248,.6);
+    flex: none;
   }
 
-  .stat-label {
-    @apply text-sm text-gray-600 dark:text-gray-400;
-  }
-
+  /* Telemetry numerals — monospace, tabular so they don't jitter. */
   .stat-value {
-    @apply text-2xl font-bold text-gray-900 dark:text-gray-100;
+    font-family: var(--mono);
+    font-size: 1.9rem;
+    line-height: 1.1;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    color: var(--txt);
+    font-variant-numeric: tabular-nums;
   }
+  .stat-label { font-size: .8rem; color: var(--dim); }
 
-  .status-badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
+  /* Progress / usage gauge */
+  .bar { height: 6px; background: var(--inset); border-radius: 999px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; border-radius: 999px; transition: width .4s ease; }
 
-  .status-badge.syncing {
-    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+  /* Tabs */
+  .tab {
+    padding: .6rem 1rem;
+    font-size: .875rem;
+    font-weight: 500;
+    color: var(--dim);
+    border-radius: 10px 10px 0 0;
+    transition: color .15s ease, background .15s ease;
+    white-space: nowrap;
   }
+  .tab:hover { color: var(--txt); }
+  .tab-active { color: var(--txt); background: var(--surface); border: 1px solid var(--line); border-bottom-color: transparent; }
+}
 
-  .status-badge.synced {
-    @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
-  }
-
-  .status-badge.error {
-    @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
-  }
-
-  .progress-bar {
-    @apply w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700;
-  }
-
-  .progress-fill {
-    @apply bg-loggie-600 h-2.5 rounded-full transition-all duration-300;
-  }
+@layer utilities {
+  .mono { font-family: var(--mono); }
+  .tnum { font-variant-numeric: tabular-nums; }
 }

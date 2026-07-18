@@ -188,7 +188,7 @@ export default function RedisPanel() {
         <h3 className="text-xl font-bold text-white mb-4">Queue Manager</h3>
 
         {queues.length === 0 ? (
-          <div className="bg-gray-800/50 rounded-lg p-8 text-center text-gray-400">
+          <div className="panel text-center text-gray-400">
             No queues found
           </div>
         ) : (
@@ -200,10 +200,10 @@ export default function RedisPanel() {
                 {queues.map((queue) => (
                   <div
                     key={queue.name}
-                    className={`bg-gray-800/50 rounded-lg p-4 cursor-pointer transition-colors ${
+                    className={`panel cursor-pointer transition-colors ${
                       selectedQueue?.name === queue.name
-                        ? 'ring-2 ring-blue-500 bg-gray-800'
-                        : 'hover:bg-gray-800/70'
+                        ? 'ring-2 ring-loggie-400'
+                        : 'hover:border-[#31465b]'
                     }`}
                     onClick={() => fetchQueueDetails(queue.name)}
                   >
@@ -233,7 +233,7 @@ export default function RedisPanel() {
             {/* Queue Details */}
             <div>
               {selectedQueue ? (
-                <div className="bg-gray-800/50 rounded-lg p-4">
+                <div className="panel">
                   <h4 className="text-sm font-semibold text-gray-400 mb-4">
                     Queue: {selectedQueue.name}
                   </h4>
@@ -260,7 +260,7 @@ export default function RedisPanel() {
                   )}
                 </div>
               ) : (
-                <div className="bg-gray-800/50 rounded-lg p-8 text-center text-gray-400">
+                <div className="panel text-center text-gray-400">
                   Select a queue to view details
                 </div>
               )}
@@ -279,7 +279,7 @@ function StatCard({ title, value, subtitle, icon }: {
   icon: string;
 }) {
   return (
-    <div className="bg-gray-800/50 rounded-lg p-4">
+    <div className="panel">
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm text-gray-400">{title}</div>
         <span className="text-2xl">{icon}</span>
@@ -292,7 +292,7 @@ function StatCard({ title, value, subtitle, icon }: {
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-gray-800/30 rounded-lg p-3">
+    <div className="panel">
       <div className="text-xs text-gray-500 mb-1">{label}</div>
       <div className="text-lg font-semibold text-white">{value}</div>
     </div>

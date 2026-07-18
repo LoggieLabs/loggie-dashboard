@@ -44,9 +44,9 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500" />
+          <div className="inline-block animate-spin rounded-full h-10 w-10 border-2 border-[#212c38] border-t-loggie-400" />
           <p className="mt-4 text-gray-400 text-sm">Loading node status…</p>
         </div>
       </div>
@@ -55,33 +55,44 @@ function App() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="bg-gray-800 rounded-lg p-6 max-w-md">
-          <h2 className="text-lg font-bold text-red-400 mb-2">Connection Error</h2>
-          <p className="text-gray-300 text-sm">{error}</p>
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="panel max-w-md">
+          <h2 className="text-lg font-semibold text-red-400 mb-2">Can't reach this node</h2>
+          <p className="text-gray-400 text-sm">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen relative z-[1]">
       {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between py-4">
-            <div>
-              <h1 className="text-xl font-bold text-white">Loggie OS Node Dashboard</h1>
-              {status && (
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {status.system.hostname} · {status.system.user}@{status.system.network.ipAddress}
-                  {' · '}uptime {formatUptime(status.system.uptime)}
-                </p>
-              )}
+      <header className="sticky top-0 z-20 border-b border-[#212c38] bg-[#0b1017]/80 backdrop-blur-md">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <NodeGlyph />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-semibold leading-none text-white">
+                    Loggie<span className="text-loggie-400"> OS</span>
+                  </h1>
+                  <span className="rounded border border-gray-700 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+                    Node
+                  </span>
+                </div>
+                {status && (
+                  <p className="mono mt-1 truncate text-xs text-gray-500">
+                    {status.system.hostname} · {status.system.user}@{status.system.network.ipAddress} · up {formatUptime(status.system.uptime)}
+                  </p>
+                )}
+              </div>
             </div>
-            <LastUpdateIndicator lastUpdate={lastUpdate} />
+            <div className="flex-shrink-0">
+              <LastUpdateIndicator lastUpdate={lastUpdate} />
+            </div>
           </div>
-          <div className="flex gap-1 -mb-px">
+          <div className="flex gap-1">
             <TabButton active={activeTab === 'node'} onClick={() => setActiveTab('node')}>
               Node Status
             </TabButton>
@@ -90,14 +101,29 @@ function App() {
             </TabButton>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Content */}
-      <div className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-4 sm:px-6 py-6">
         {activeTab === 'node' && <Dashboard status={status} />}
         {activeTab === 'redis' && <RedisPanel />}
-      </div>
+      </main>
     </div>
+  );
+}
+
+function NodeGlyph() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 32 32" className="flex-shrink-0" aria-hidden="true">
+      <circle cx="16" cy="16" r="9" fill="none" stroke="#38bdf8" strokeWidth="2" opacity="0.5" />
+      <circle cx="16" cy="16" r="4" fill="#38bdf8" />
+      <g stroke="#38bdf8" strokeWidth="2" strokeLinecap="round">
+        <line x1="16" y1="3" x2="16" y2="6" />
+        <line x1="16" y1="26" x2="16" y2="29" />
+        <line x1="3" y1="16" x2="6" y2="16" />
+        <line x1="26" y1="16" x2="29" y2="16" />
+      </g>
+    </svg>
   );
 }
 
@@ -111,14 +137,7 @@ function TabButton({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={`px-5 py-2.5 text-sm font-medium transition-colors ${
-        active
-          ? 'bg-gray-900 text-white border-t border-x border-gray-700 rounded-t'
-          : 'text-gray-400 hover:text-white'
-      }`}
-    >
+    <button onClick={onClick} className={`tab ${active ? 'tab-active' : ''}`}>
       {children}
     </button>
   );
@@ -138,9 +157,9 @@ function LastUpdateIndicator({ lastUpdate }: { lastUpdate: number }) {
   }, [lastUpdate]);
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-700/50">
+    <div className="inline-flex items-center gap-2 rounded-full border border-[#212c38] bg-[#131a23] px-3 py-1">
       <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-      <span className="text-xs text-gray-300">Updated {timeAgo}</span>
+      <span className="text-xs text-gray-400">Updated {timeAgo}</span>
     </div>
   );
 }

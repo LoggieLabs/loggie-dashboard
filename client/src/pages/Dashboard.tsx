@@ -98,8 +98,8 @@ function Dashboard({ status }: DashboardProps) {
 
       {/* Disk I/O */}
       {status.system.diskIO && (
-        <div className="bg-gray-800/50 rounded-lg p-5">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
+        <div className="panel">
+          <h3 className="eyebrow mb-4">
             Disk I/O — {status.system.diskIO.device}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -179,8 +179,8 @@ function Dashboard({ status }: DashboardProps) {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {status.geth && (
-              <div className="bg-gray-800/50 rounded-lg p-5">
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Geth Sync</h3>
+              <div className="panel">
+                <h3 className="eyebrow mb-4">Geth Sync</h3>
                 <div className="space-y-3">
                   <div>
                     <div className="flex justify-between text-sm mb-1">
@@ -204,8 +204,8 @@ function Dashboard({ status }: DashboardProps) {
               </div>
             )}
             {status.lighthouse && (
-              <div className="bg-gray-800/50 rounded-lg p-5">
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Lighthouse Sync</h3>
+              <div className="panel">
+                <h3 className="eyebrow mb-4">Lighthouse Sync</h3>
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
@@ -233,8 +233,8 @@ function Dashboard({ status }: DashboardProps) {
       )}
 
       {/* System Info */}
-      <div className="bg-gray-800/50 rounded-lg p-5">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">System Information</h3>
+      <div className="panel">
+        <h3 className="eyebrow mb-4">System Information</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <InfoField label="Hostname" value={status.system.hostname} />
           <InfoField label="User" value={status.system.user} />
@@ -250,8 +250,8 @@ function Dashboard({ status }: DashboardProps) {
 function ServicesStrip({ services }: { services: ServiceHealth[] }) {
   if (!services || services.length === 0) return null;
   return (
-    <div className="bg-gray-800/50 rounded-lg px-5 py-4">
-      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Services</h3>
+    <div className="panel">
+      <h3 className="eyebrow mb-3">Services</h3>
       <div className="flex flex-wrap gap-2">
         {services.map(s => (
           <div key={s.name} className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
@@ -275,8 +275,8 @@ function ServicesStrip({ services }: { services: ServiceHealth[] }) {
 function DrivesTable({ drives, getUsageColor }: { drives: DriveInfo[]; getUsageColor: (n: number) => string }) {
   if (!drives || drives.length === 0) return null;
   return (
-    <div className="bg-gray-800/50 rounded-lg p-5">
-      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Storage</h3>
+    <div className="panel">
+      <h3 className="eyebrow mb-4">Storage</h3>
       <div className="space-y-3">
         {drives.map((d, i) => (
           <div key={i}>
@@ -314,8 +314,8 @@ function NetworkIO({ interfaces, formatDataRate, formatBytes }: {
   const active = interfaces.filter(i => i.rxBytes > 0 || i.txBytes > 0);
   if (active.length === 0) return null;
   return (
-    <div className="bg-gray-800/50 rounded-lg p-5">
-      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Network I/O</h3>
+    <div className="panel">
+      <h3 className="eyebrow mb-4">Network I/O</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {active.map(iface => (
           <div key={iface.name} className="bg-gray-900/40 rounded-lg p-3">
@@ -355,8 +355,8 @@ function ProcessTable({ processes }: { processes: ProcessInfo[] }) {
   };
 
   return (
-    <div className="bg-gray-800/50 rounded-lg p-5">
-      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
+    <div className="panel">
+      <h3 className="eyebrow mb-4">
         Active Processes
       </h3>
       <div className="overflow-x-auto">
@@ -412,7 +412,7 @@ function IpfsSection({
 
   if (!ipfs.available) {
     return (
-      <div className="bg-gray-800/30 rounded-lg p-5 flex items-center gap-3">
+      <div className="panel flex items-center gap-3">
         <div className="h-2 w-2 rounded-full bg-gray-600" />
         <span className="text-sm text-gray-500">IPFS not available on this node</span>
       </div>
@@ -420,9 +420,9 @@ function IpfsSection({
   }
 
   return (
-    <div className="bg-gray-800/50 rounded-lg p-5">
+    <div className="panel">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">IPFS Network</h3>
+        <h3 className="eyebrow">IPFS Network</h3>
         <div className="flex items-center gap-3">
           <span className={`px-2 py-0.5 rounded text-xs font-medium ${
             ipfs.isPublicGateway
@@ -560,9 +560,9 @@ function SpeedTestSection({ initial }: { initial: SpeedTestResult | null }) {
   };
 
   return (
-    <div className="bg-gray-800/50 rounded-lg p-5">
+    <div className="panel">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Internet Speed</h3>
+        <h3 className="eyebrow">Internet Speed</h3>
         <div className="flex items-center gap-3">
           {result && !running && (
             <span className="text-xs text-gray-500">tested {testedAgo(result.testedAt)}</span>
@@ -623,17 +623,17 @@ function SpeedStat({ label, value, unit, color }: { label: string; value: number
 
 function MetricCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-gray-800/50 rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-gray-400 mb-3">{title}</h3>
+    <div className="metric">
+      <h3 className="eyebrow mb-3">{title}</h3>
       {children}
     </div>
   );
 }
 
-function ProgressBar({ value, color = 'bg-blue-500' }: { value: number; color?: string }) {
+function ProgressBar({ value, color = 'bg-loggie-400' }: { value: number; color?: string }) {
   return (
-    <div className="mt-2 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-      <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(value, 100)}%` }} />
+    <div className="bar mt-3">
+      <i className={color} style={{ width: `${Math.min(value, 100)}%` }} />
     </div>
   );
 }
