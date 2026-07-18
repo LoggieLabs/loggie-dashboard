@@ -68,6 +68,8 @@ export interface NetworkInterface {
   txKBps: number;
   rxBytes: number;
   txBytes: number;
+  address?: string | null;
+  kind?: 'ethernet' | 'wireless' | 'other';
 }
 
 export interface ServiceHealth {
@@ -78,6 +80,7 @@ export interface ServiceHealth {
 
 export interface SystemInfo {
   hostname: string;
+  user: string;
   uptime: number;
   diskUsage: {
     total: number;

@@ -237,6 +237,7 @@ function Dashboard({ status }: DashboardProps) {
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">System Information</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <InfoField label="Hostname" value={status.system.hostname} />
+          <InfoField label="User" value={status.system.user} />
           <InfoField label="IP Address" value={status.system.network.ipAddress} />
           <InfoField label="CPU Cores" value={`${status.system.cpu.cores} cores`} />
           <InfoField label="Total Memory" value={`${status.system.memory.total}G RAM`} />

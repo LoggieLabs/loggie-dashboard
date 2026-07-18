@@ -130,6 +130,29 @@ interface NetStats {
 
 let previousNetStats: NetStats | null = null;
 
+// Tag an interface as ethernet/wireless/other. sysfs is the reliable signal on
+// Linux (wireless NICs expose /sys/class/net/<name>/wireless); fall back to the
+// predictable-name convention (en*/eth* = wired, wl* = wireless).
+async function ifaceKind(name: string): Promise<'ethernet' | 'wireless' | 'other'> {
+  try {
+    await fs.access(`/sys/class/net/${name}/wireless`);
+    return 'wireless';
+  } catch {}
+  if (/^(wl|wlan|wlp|wlx)/.test(name)) return 'wireless';
+  if (/^(en|eth|eno|enp|ens|end|enx)/.test(name)) return 'ethernet';
+  return 'other';
+}
+
+type RawIface = { name: string; rxKBps: number; txKBps: number; rxBytes: number; txBytes: number };
+
+async function enrichIfaces(ifaces: RawIface[]) {
+  const nets = os.networkInterfaces();
+  return Promise.all(ifaces.map(async (i) => {
+    const v4 = (nets[i.name] || []).find((a) => a.family === 'IPv4' && !a.internal);
+    return { ...i, address: v4?.address ?? null, kind: await ifaceKind(i.name) };
+  }));
+}
+
 async function getNetworkIO() {
   try {
     const raw = await fs.readFile('/proc/net/dev', 'utf-8');
@@ -149,7 +172,7 @@ async function getNetworkIO() {
 
     if (!previousNetStats) {
       previousNetStats = { timestamp: now, ifaces: current };
-      return Object.keys(current).map(name => ({ name, rxKBps: 0, txKBps: 0, rxBytes: current[name].rx, txBytes: current[name].tx }));
+      return enrichIfaces(Object.keys(current).map(name => ({ name, rxKBps: 0, txKBps: 0, rxBytes: current[name].rx, txBytes: current[name].tx })));
     }
 
     const timeDiff = (now - previousNetStats.timestamp) / 1000;
@@ -161,7 +184,7 @@ async function getNetworkIO() {
     });
 
     previousNetStats = { timestamp: now, ifaces: current };
-    return result;
+    return enrichIfaces(result);
   } catch {
     return [];
   }
@@ -329,6 +352,9 @@ export async function getSystemInfo(): Promise<SystemInfo> {
     ipAddress = stdout.trim();
   } catch {}
 
+  let user = 'unknown';
+  try { user = os.userInfo().username; } catch {}
+
   const [diskIO, drives, networkIO, services, processes] = await Promise.all([
     getDiskIOStats(),
     getMountedDrives(),
@@ -339,6 +365,7 @@ export async function getSystemInfo(): Promise<SystemInfo> {
 
   return {
     hostname,
+    user,
     uptime,
     diskUsage,
     diskIO,

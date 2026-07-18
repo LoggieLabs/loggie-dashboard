@@ -74,7 +74,7 @@ function App() {
               <h1 className="text-xl font-bold text-white">Loggie OS Node Dashboard</h1>
               {status && (
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {status.system.hostname} · {status.system.network.ipAddress}
+                  {status.system.hostname} · {status.system.user}@{status.system.network.ipAddress}
                   {' · '}uptime {formatUptime(status.system.uptime)}
                 </p>
               )}
