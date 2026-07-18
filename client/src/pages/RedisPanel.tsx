@@ -151,25 +151,21 @@ export default function RedisPanel() {
               title="Memory Usage"
               value={analytics.used_memory_human}
               subtitle={`Peak: ${analytics.used_memory_peak_human}`}
-              icon="💾"
             />
             <StatCard
               title="Operations/sec"
               value={analytics.instantaneous_ops_per_sec.toLocaleString()}
               subtitle={`Total: ${analytics.total_commands_processed.toLocaleString()}`}
-              icon="⚡"
             />
             <StatCard
               title="Cache Hit Rate"
               value={`${analytics.hit_rate.toFixed(2)}%`}
               subtitle={`${analytics.keyspace_hits.toLocaleString()} hits / ${analytics.keyspace_misses.toLocaleString()} misses`}
-              icon="🎯"
             />
             <StatCard
               title="Uptime"
               value={`${analytics.uptime_in_days} days`}
               subtitle={`${analytics.connected_clients} clients`}
-              icon="⏱️"
             />
           </div>
 
@@ -234,26 +230,25 @@ export default function RedisPanel() {
             <div>
               {selectedQueue ? (
                 <div className="panel">
-                  <h4 className="text-sm font-semibold text-gray-400 mb-4">
-                    Queue: {selectedQueue.name}
-                  </h4>
-                  <div className="mb-4">
-                    <div className="text-2xl font-bold text-white">{selectedQueue.length}</div>
-                    <div className="text-sm text-gray-400">items in queue</div>
+                  <div className="flex items-end justify-between gap-3 mb-4">
+                    <div className="min-w-0">
+                      <div className="eyebrow mb-1">Queue</div>
+                      <div className="mono text-sm text-white truncate" title={selectedQueue.name}>
+                        {selectedQueue.name}
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="stat-value">{selectedQueue.length.toLocaleString()}</div>
+                      <div className="stat-label">items</div>
+                    </div>
                   </div>
 
                   {selectedQueue.items && selectedQueue.items.length > 0 && (
                     <>
-                      <h5 className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                        Most Recent Items (newest first, up to 20)
-                      </h5>
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                      <h5 className="eyebrow mb-3">Recent items · newest first · up to 20</h5>
+                      <div className="space-y-1.5 max-h-[30rem] overflow-y-auto pr-1">
                         {selectedQueue.items.map((item, idx) => (
-                          <div key={idx} className="bg-gray-900/50 rounded p-2">
-                            <pre className="text-xs text-gray-300 overflow-x-auto">
-                              {JSON.stringify(item, null, 2)}
-                            </pre>
-                          </div>
+                          <QueueItem key={idx} raw={item} />
                         ))}
                       </div>
                     </>
@@ -272,20 +267,16 @@ export default function RedisPanel() {
   );
 }
 
-function StatCard({ title, value, subtitle, icon }: {
+function StatCard({ title, value, subtitle }: {
   title: string;
   value: string;
   subtitle: string;
-  icon: string;
 }) {
   return (
-    <div className="panel">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm text-gray-400">{title}</div>
-        <span className="text-2xl">{icon}</span>
-      </div>
-      <div className="text-2xl font-bold text-white mb-1">{value}</div>
-      <div className="text-xs text-gray-500">{subtitle}</div>
+    <div className="metric">
+      <h3 className="eyebrow mb-3">{title}</h3>
+      <div className="stat-value">{value}</div>
+      <div className="stat-label mt-1">{subtitle}</div>
     </div>
   );
 }
@@ -294,7 +285,7 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="panel">
       <div className="text-xs text-gray-500 mb-1">{label}</div>
-      <div className="text-lg font-semibold text-white">{value}</div>
+      <div className="mono tnum text-lg font-semibold text-white">{value}</div>
     </div>
   );
 }
@@ -305,4 +296,146 @@ function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
+
+/* ── Universal queue-stream item rendering ─────────────────────────────────
+   Redis list items are usually JSON strings (sometimes double-encoded). We
+   parse defensively, then show a headline + severity + time derived from
+   common field names, with a syntax-highlighted, collapsible JSON body. No
+   field is required, so this degrades gracefully for any stream shape. */
+
+function parseDeep(v: any, depth = 0): any {
+  if (depth > 4) return v;
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if ((s[0] === '{' && s[s.length - 1] === '}') || (s[0] === '[' && s[s.length - 1] === ']')) {
+      try { return parseDeep(JSON.parse(s), depth + 1); } catch { return v; }
+    }
+  }
+  return v;
+}
+
+function firstVal(o: any, keys: string[]): any {
+  for (const k of keys) {
+    if (o && o[k] !== undefined && o[k] !== null && typeof o[k] !== 'object') return o[k];
+  }
+  return undefined;
+}
+
+function severityOf(o: any): 'ok' | 'warn' | 'bad' | null {
+  if (!o || typeof o !== 'object') return null;
+  if (o.should_alert === true) return 'bad';
+  const score = firstVal(o, ['risk_score', 'riskScore', 'score', 'severity_score']);
+  if (typeof score === 'number') { if (score >= 4) return 'bad'; if (score >= 2.5) return 'warn'; }
+  const word = String(firstVal(o, ['classification', 'severity', 'level', 'status', 'risk', 'priority', 'result']) ?? '').toLowerCase();
+  if (/attack|critical|fatal|high|danger|error|fail|malicious/.test(word)) return 'bad';
+  if (/mev|medium|warn|suspect|elevated|degraded|review/.test(word)) return 'warn';
+  if (/low|safe|ok|info|normal|success|healthy|clean|pass/.test(word)) return 'ok';
+  return typeof score === 'number' ? 'ok' : null;
+}
+
+function headlineOf(o: any): string | null {
+  if (o == null) return null;
+  if (typeof o !== 'object') return String(o);
+  const h = firstVal(o, ['summary', 'message', 'msg', 'title', 'label', 'name', 'event', 'type', 'description', 'text', 'kind']);
+  return h != null ? String(h) : null;
+}
+
+function timeOf(o: any): Date | string | null {
+  const t = firstVal(o, ['datetime', 'timestamp', 'time', 'created_at', 'createdAt', 'date', 'ts']);
+  if (t == null) return null;
+  let d: Date;
+  if (typeof t === 'number') d = new Date(t > 1e12 ? t : t * 1000);
+  else {
+    const n = Number(t);
+    d = isNaN(n) ? new Date(t) : new Date(n > 1e12 ? n : n * 1000);
+  }
+  return isNaN(d.getTime()) ? (typeof t === 'string' ? t : null) : d;
+}
+
+function agoOrTime(t: Date | string): string {
+  if (!(t instanceof Date)) return String(t);
+  const s = Math.floor((Date.now() - t.getTime()) / 1000);
+  if (s < 0) return t.toLocaleTimeString();
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return t.toLocaleDateString();
+}
+
+function truncMid(s: string, max = 46): string {
+  if (s.length <= max) return s;
+  const head = Math.ceil((max - 1) / 2);
+  const tail = Math.floor((max - 1) / 2);
+  return `${s.slice(0, head)}…${s.slice(-tail)}`;
+}
+
+function QueueItem({ raw }: { raw: any }) {
+  const data = parseDeep(raw);
+  const isObj = data != null && typeof data === 'object' && !Array.isArray(data);
+  const sev = isObj ? severityOf(data) : null;
+  const headline = headlineOf(data) ?? (typeof data === 'object' ? 'record' : String(data));
+  const time = isObj ? timeOf(data) : null;
+  const dot = sev === 'bad' ? 'var(--bad)' : sev === 'warn' ? 'var(--warn)' : sev === 'ok' ? 'var(--ok)' : 'var(--faint)';
+  return (
+    <details className="qitem">
+      <summary>
+        <span className="qdot" style={{ background: dot }} />
+        <span className="qhead">{headline}</span>
+        {time && <span className="qtime">{agoOrTime(time)}</span>}
+        <span className="qchev">▸</span>
+      </summary>
+      <div className="qbody">
+        {typeof data === 'object'
+          ? <JsonView data={data} />
+          : <span className="js" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{String(data)}</span>}
+      </div>
+    </details>
+  );
+}
+
+function JsonScalar({ v }: { v: any }) {
+  if (v === null) return <span className="jz">null</span>;
+  const t = typeof v;
+  if (t === 'number') return <span className="jn">{String(v)}</span>;
+  if (t === 'boolean') return <span className="jb">{String(v)}</span>;
+  const s = String(v);
+  return <span className="js" title={s.length > 46 ? s : undefined}>"{truncMid(s)}"</span>;
+}
+
+function JsonView({ data, depth = 0 }: { data: any; depth?: number }) {
+  const isArr = Array.isArray(data);
+  const entries: [string, any][] = isArr
+    ? (data as any[]).map((v, i) => [String(i), v])
+    : Object.entries(data ?? {});
+
+  // Inline a short scalar array: [ 1, 2, 3 ]
+  if (isArr && entries.every(([, v]) => v === null || typeof v !== 'object')) {
+    const joined = entries.reduce((n, [, v]) => n + String(v).length + 2, 0);
+    if (entries.length <= 4 && joined < 56) {
+      return (
+        <span>
+          <span className="jz">[ </span>
+          {entries.map(([, v], i) => (
+            <span key={i}>{i > 0 && <span className="jz">, </span>}<JsonScalar v={v} /></span>
+          ))}
+          <span className="jz"> ]</span>
+        </span>
+      );
+    }
+  }
+
+  return (
+    <div style={{ paddingLeft: depth ? 14 : 0 }}>
+      {entries.map(([k, v]) => {
+        const nested = v !== null && typeof v === 'object';
+        return (
+          <div key={k}>
+            {isArr ? <span className="jz">– </span> : <><span className="jk">{k}</span><span className="jz">: </span></>}
+            {nested ? <JsonView data={v} depth={depth + 1} /> : <JsonScalar v={v} />}
+          </div>
+        );
+      })}
+    </div>
+  );
 }

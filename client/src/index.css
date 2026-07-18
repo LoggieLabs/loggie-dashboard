@@ -124,6 +124,26 @@
   }
   .tab:hover { color: var(--txt); }
   .tab-active { color: var(--txt); background: var(--surface); border: 1px solid var(--line); border-bottom-color: transparent; }
+
+  /* Queue stream item — collapsible record with headline + pretty JSON body.
+     Universal: works for any Redis stream, not just TrapNet bundles. */
+  .qitem { background: var(--inset); border: 1px solid var(--line-soft); border-radius: 10px; overflow: hidden; }
+  .qitem[open] { border-color: var(--line); }
+  .qitem > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .55rem; padding: .5rem .65rem; }
+  .qitem > summary::-webkit-details-marker { display: none; }
+  .qitem > summary:hover { background: rgba(255,255,255,.02); }
+  .qdot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .qhead { flex: 1; min-width: 0; font-size: .8rem; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qtime { font-family: var(--mono); font-size: .7rem; color: var(--faint); flex: none; }
+  .qchev { color: var(--faint); flex: none; transition: transform .15s ease; }
+  .qitem[open] .qchev { transform: rotate(90deg); }
+  .qbody { padding: .55rem .7rem .7rem; border-top: 1px solid var(--line-soft);
+           font-family: var(--mono); font-size: .72rem; line-height: 1.65; overflow-x: auto; }
+  .qbody .jk { color: var(--cyan-dim); }        /* json key */
+  .qbody .js { color: #7ee787; }                /* string   */
+  .qbody .jn { color: #e3a008; }                /* number   */
+  .qbody .jb { color: #79c0ff; }                /* boolean  */
+  .qbody .jz { color: var(--faint); }           /* null / punctuation */
 }
 
 @layer utilities {
